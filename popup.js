@@ -421,8 +421,8 @@
         chkLowercase.checked = true;
       }
 
+      // Start blank; a password is only generated when the user asks for one
       updateSliderFill();
-      generatePassword();
     };
 
     const applyHistory = (hist) => {
@@ -434,33 +434,41 @@
       renderHistory();
     };
 
+    // History must be loaded BEFORE settings are applied, because applying
+    // settings generates a password and records it; otherwise the stored
+    // history would be overwritten with a near-empty list.
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      if (chrome.storage.sync) {
-        chrome.storage.sync.get(['passwordGeneratorSettings'], (res) => {
-          applySettings(res?.passwordGeneratorSettings);
-        });
-      } else {
-        applySettings(null);
-      }
+      const loadSyncSettings = () => {
+        if (chrome.storage.sync) {
+          chrome.storage.sync.get(['passwordGeneratorSettings'], (res) => {
+            applySettings(res?.passwordGeneratorSettings);
+          });
+        } else {
+          applySettings(null);
+        }
+      };
 
       if (chrome.storage.local) {
         chrome.storage.local.get(['passwordGeneratorHistory'], (res) => {
           applyHistory(res?.passwordGeneratorHistory);
+          loadSyncSettings();
         });
+      } else {
+        loadSyncSettings();
       }
     } else {
-      try {
-        const saved = JSON.parse(localStorage.getItem('passwordGeneratorSettings'));
-        applySettings(saved);
-      } catch (e) {
-        applySettings(null);
-      }
-
       try {
         const hist = JSON.parse(localStorage.getItem('passwordGeneratorHistory'));
         applyHistory(hist);
       } catch (e) {
         applyHistory([]);
+      }
+
+      try {
+        const saved = JSON.parse(localStorage.getItem('passwordGeneratorSettings'));
+        applySettings(saved);
+      } catch (e) {
+        applySettings(null);
       }
     }
   }
